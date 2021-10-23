@@ -2,7 +2,18 @@
 name = "active_rdc_webhook_notifier"
 version = "0.1.0"
 edition = "2021"
+authors = ["Rajat Rajput <rajputrajat@gmail.com>"]
+description = "a simple console add which will check rdc connections in backround and report to webhook"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rajputrajat/active_rdc_webhook_notifier.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.44"
+env_logger = "0.9.0"
+log = "0.4.14"
+periodic-closure = "0.1.0"
+rdc_connections = "0.0.2"
+simple_webhook_msg_sender = "0.0.1"
+tokio = { version="1.12.0", features=["full"] }
