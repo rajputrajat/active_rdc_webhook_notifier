@@ -1494,9 +1494,9 @@ dependencies = [
 
 [[package]]
 name = "rdc_connections"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0484095ffa390ac25c9a1ece1f160f82bca2a405112a3ce18847b0ed5caac7e3"
+checksum = "e4bf83e73b3b689c70866bddf3bdc21cbb7d7df7799ac82beb0131d557ae9c8c"
 dependencies = [
  "anyhow",
  "log",

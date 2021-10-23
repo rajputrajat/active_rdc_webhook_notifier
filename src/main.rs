@@ -13,7 +13,17 @@ async fn main() -> Result<()> {
     for server_name in input.servers {
         server_handlers.push(RemoteServer::new(&server_name)?);
     }
+    let mut tasks = Vec::new();
+    for handler in server_handlers {
+        tasks.push(tokio::task::spawn(|| async move {}));
+    }
     Ok(())
+}
+
+fn read_active_connections(server_handle: &mut RemoteServer) -> Result<String> {
+    server_handle.update_info()?;
+    for connection in server_handle.
+    Ok(format!(""))
 }
 
 fn process_cmd_args() -> Result<UserInput> {
