@@ -5,39 +5,16 @@ use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
 use std::{
     collections::{hash_map::Entry, HashMap},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use tokio::time::{sleep, Duration};
 
 type MsgSender = Arc<WebhookSender>;
-type StateMapShared = Arc<ServerClientMap>;
+type ServerClientMapShared = Arc<Mutex<ServerClientMap>>;
+type ServerClientMap = HashMap<String, ClientStateMap>;
 
 struct ClientStateMap {
     data: HashMap<String, RemoteDesktopSessionState>,
-}
-
-struct ServerClientMap {
-    data: HashMap<String, ClientStateMap>,
-}
-
-impl ServerClientMap {
-    fn new() -> Self {
-        Self {
-            data: HashMap::new(),
-        }
-    }
-
-    fn register_server(&mut self, server: &str) {
-        self.data.insert(server.to_owned(), ClientStateMap::new());
-    }
-
-    fn update_state(
-        &mut self,
-        server: &str,
-        client: &str,
-        current_state: RemoteDesktopSessionState,
-    ) -> Result<String> {
-    }
 }
 
 impl ClientStateMap {
@@ -52,6 +29,12 @@ impl ClientStateMap {
         client: &str,
         current_state: RemoteDesktopSessionState,
     ) -> Result<String> {
+        if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
+            e.insert(current_state);
+        } else {
+            let prev_state = self.data.get_mut(client).unwrap();
+        }
+        Ok("".to_owned())
     }
 }
 
