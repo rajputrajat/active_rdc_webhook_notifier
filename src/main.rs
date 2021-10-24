@@ -12,19 +12,20 @@ async fn main() -> Result<()> {
     env_logger::init();
     let input = process_cmd_args()?;
     let msg_sender = WebhookSender::new(&input.url);
-    let mut server_handlers = Arc::new(Mutex::new(Vec::new()));
+    let server_handlers = Arc::new(Mutex::new(Vec::new()));
     for server_name in input.servers {
         server_handlers
             .lock()
             .unwrap()
             .push(RemoteServer::new(&server_name)?);
     }
-    let mut tasks = Vec::new();
     Ok(())
 }
 
 fn refresh_all_connections(handles: ServerHandles) {
-    for handler in handlers.lock().unwrap() {
+    let handles_v = handles.lock().unwrap();
+    let mut tasks = Vec::new();
+    for handler in handles_v {
         tasks.push(tokio::task::spawn(async {
             read_active_connections(&mut handler)
         }));
