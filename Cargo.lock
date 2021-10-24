@@ -1037,9 +1037,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.104"
+version = "0.2.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b2f96d100e1cf1929e7719b7edb3b90ab5298072638fccd77be9ce942ecdfce"
+checksum = "869d572136620d55835903746bcb5cdc54cb2851fd0aeec53220b4bb65ef3013"
 
 [[package]]
 name = "linked-hash-map"
@@ -1494,9 +1494,9 @@ dependencies = [
 
 [[package]]
 name = "rdc_connections"
-version = "0.0.3"
+version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4bf83e73b3b689c70866bddf3bdc21cbb7d7df7799ac82beb0131d557ae9c8c"
+checksum = "59a26bcc7b0c6fa4f0b8a299263c661b210e1eeaf88f37591807ace3f9d17081"
 dependencies = [
  "anyhow",
  "log",

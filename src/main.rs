@@ -1,33 +1,53 @@
 use anyhow::{anyhow, Result};
 use clap::{App, Arg};
 use log::info;
-use rdc_connections::RemoteServer;
+use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
+use std::sync::{Arc, Mutex};
+
+type ServerHandles = Arc<Mutex<Vec<RemoteServer>>>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
     let input = process_cmd_args()?;
     let msg_sender = WebhookSender::new(&input.url);
-    let mut server_handlers = Vec::new();
+    let mut server_handlers = Arc::new(Mutex::new(Vec::new()));
     for server_name in input.servers {
-        server_handlers.push(RemoteServer::new(&server_name)?);
+        server_handlers
+            .lock()
+            .unwrap()
+            .push(RemoteServer::new(&server_name)?);
     }
     let mut tasks = Vec::new();
-    for handler in server_handlers {
-        tasks.push(tokio::task::spawn(|| async move {}));
-    }
     Ok(())
+}
+
+fn refresh_all_connections(handles: ServerHandles) {
+    for handler in handlers.lock().unwrap() {
+        tasks.push(tokio::task::spawn(async {
+            read_active_connections(&mut handler)
+        }));
+    }
 }
 
 fn read_active_connections(server_handle: &mut RemoteServer) -> Result<String> {
     server_handle.update_info()?;
-    for connection in server_handle.
-    Ok(format!(""))
+    let mut connection_info = String::new();
+    server_handle
+        .iter()
+        .filter(|&s| s.state == RemoteDesktopSessionState::Active)
+        .for_each(|i| {
+            connection_info.push_str(&format!(
+                "Connected user: {:?}, Client: {:?}, from address: {:?}",
+                i.client_info.user, i.client_info.client, i.client_info.address
+            ));
+        });
+    Ok(connection_info)
 }
 
 fn process_cmd_args() -> Result<UserInput> {
-    let mut m = App::new("Active RDC Webhook notifier")
+    let m = App::new("Active RDC Webhook notifier")
         .author("Rajat Rajput <rajputrajat@gmail.com>")
         .arg(
             Arg::with_name("server")
