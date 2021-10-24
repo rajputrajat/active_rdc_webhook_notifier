@@ -3,25 +3,81 @@ use clap::{App, Arg};
 use log::info;
 use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
-use std::sync::Arc;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 use tokio::time::{sleep, Duration};
 
 type MsgSender = Arc<WebhookSender>;
+type StateMapShared = Arc<ServerClientMap>;
+
+struct ClientStateMap {
+    data: HashMap<String, RemoteDesktopSessionState>,
+}
+
+struct ServerClientMap {
+    data: HashMap<String, ClientStateMap>,
+}
+
+impl ServerClientMap {
+    fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+
+    fn register_server(&mut self, server: &str) {
+        self.data.insert(server.to_owned(), ClientStateMap::new());
+    }
+
+    fn update_state(
+        &mut self,
+        server: &str,
+        client: &str,
+        current_state: RemoteDesktopSessionState,
+    ) -> Result<String> {
+    }
+}
+
+impl ClientStateMap {
+    fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+
+    fn update_state(
+        &mut self,
+        client: &str,
+        current_state: RemoteDesktopSessionState,
+    ) -> Result<String> {
+    }
+}
 
 #[tokio::main]
 async fn main() -> ! {
     env_logger::init();
     let input = process_cmd_args().unwrap();
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
+    let client_state_map: ServerClientMap = Arc::new(ClientStateMap::new());
     loop {
-        refresh_all_connections(msg_sender.clone(), input.servers.clone())
-            .await
-            .unwrap();
+        refresh_all_connections(
+            msg_sender.clone(),
+            input.servers.clone(),
+            client_state_map.clone(),
+        )
+        .await
+        .unwrap();
         sleep(input.period).await;
     }
 }
 
-async fn refresh_all_connections(msg_sender: MsgSender, servers: Vec<String>) -> Result<()> {
+async fn refresh_all_connections(
+    msg_sender: MsgSender,
+    servers: Vec<String>,
+    client_state_map: ClientStateMapShared,
+) -> Result<()> {
     let mut tasks = Vec::new();
     for server in servers {
         tasks.push(tokio::task::spawn(async move {
