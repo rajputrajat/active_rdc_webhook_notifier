@@ -12,14 +12,15 @@ async fn main() -> Result<()> {
     env_logger::init();
     let input = process_cmd_args()?;
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
-    refresh_all_connections(sermsg_sender).await?;
+    refresh_all_connections(msg_sender, input.servers).await?;
     Ok(())
 }
 
-async fn refresh_all_connections(servers: msg_sender: MsgSender) -> Result<()> {
+async fn refresh_all_connections(msg_sender: MsgSender, servers: Vec<String>) -> Result<()> {
     let mut tasks = Vec::new();
-    for mut server in servers.iter() {
+    for server in servers {
         tasks.push(tokio::task::spawn(async move {
+            let handler = RemoteServer::new(server)?;
             read_active_connections(handler)
         }));
     }
@@ -29,8 +30,7 @@ async fn refresh_all_connections(servers: msg_sender: MsgSender) -> Result<()> {
     Ok(())
 }
 
-fn read_active_connections(server_handle: RemoteServer) -> Result<String> {
-    let server_handle = RemoteServer
+fn read_active_connections(mut server_handle: RemoteServer) -> Result<String> {
     let server_info_v = server_handle.get_updated_info()?;
     let mut connection_info = String::new();
     server_info_v
