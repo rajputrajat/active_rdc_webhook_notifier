@@ -3,17 +3,22 @@ use clap::{App, Arg};
 use log::info;
 use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::time::{sleep, Duration};
 
 type MsgSender = Arc<WebhookSender>;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> ! {
     env_logger::init();
-    let input = process_cmd_args()?;
+    let input = process_cmd_args().unwrap();
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
-    refresh_all_connections(msg_sender, input.servers).await?;
-    Ok(())
+    loop {
+        refresh_all_connections(msg_sender.clone(), input.servers.clone())
+            .await
+            .unwrap();
+        sleep(input.period).await;
+    }
 }
 
 async fn refresh_all_connections(msg_sender: MsgSender, servers: Vec<String>) -> Result<()> {
@@ -25,7 +30,8 @@ async fn refresh_all_connections(msg_sender: MsgSender, servers: Vec<String>) ->
         }));
     }
     for t in tasks {
-        let connection_status = t.await?;
+        let connection_status = t.await??;
+        msg_sender.post(&connection_status).await?;
     }
     Ok(())
 }
@@ -62,6 +68,13 @@ fn process_cmd_args() -> Result<UserInput> {
                 .last(true)
                 .required(true),
         )
+        .arg(
+            Arg::with_name("period")
+                .long("period")
+                .value_name("period between")
+                .multiple(false)
+                .required(true),
+        )
         .get_matches();
     let servers: Vec<String> = m
         .values_of("server")
@@ -73,10 +86,21 @@ fn process_cmd_args() -> Result<UserInput> {
         .value_of("webhook url")
         .ok_or_else(|| anyhow!("'webhook url' input is missing"))?
         .to_owned();
-    Ok(UserInput { servers, url })
+    let period = {
+        let p_str = m
+            .value_of("period")
+            .ok_or_else(|| anyhow!("'period' is mandatory"))?;
+        Duration::from_secs(p_str.parse::<u64>()?)
+    };
+    Ok(UserInput {
+        servers,
+        url,
+        period,
+    })
 }
 
 struct UserInput {
     servers: Vec<String>,
     url: String,
+    period: Duration,
 }
