@@ -22,17 +22,22 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn refresh_all_connections(handles: ServerHandles) {
+async fn refresh_all_connections(handles: ServerHandles) -> Result<()> {
     let handles_v = handles.lock().unwrap();
     let mut tasks = Vec::new();
-    for handler in handles_v {
-        tasks.push(tokio::task::spawn(async {
-            read_active_connections(&mut handler)
+    for mut handler in handles_v.iter() {
+        let mut handler = (*handler).clone();
+        tasks.push(tokio::task::spawn(async move {
+            read_active_connections(handler)
         }));
     }
+    for t in tasks {
+        let connection_status = t.await?;
+    }
+    Ok(())
 }
 
-fn read_active_connections(server_handle: &mut RemoteServer) -> Result<String> {
+fn read_active_connections(server_handle: RemoteServer) -> Result<String> {
     server_handle.update_info()?;
     let mut connection_info = String::new();
     server_handle
