@@ -5,28 +5,20 @@ use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
 use std::sync::{Arc, Mutex};
 
-type ServerHandles = Arc<Mutex<Vec<RemoteServer>>>;
+type MsgSender = Arc<WebhookSender>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
     let input = process_cmd_args()?;
-    let msg_sender = WebhookSender::new(&input.url);
-    let server_handlers = Arc::new(Mutex::new(Vec::new()));
-    for server_name in input.servers {
-        server_handlers
-            .lock()
-            .unwrap()
-            .push(RemoteServer::new(&server_name)?);
-    }
+    let msg_sender = Arc::new(WebhookSender::new(&input.url));
+    refresh_all_connections(sermsg_sender).await?;
     Ok(())
 }
 
-async fn refresh_all_connections(handles: ServerHandles) -> Result<()> {
-    let handles_v = handles.lock().unwrap();
+async fn refresh_all_connections(servers: msg_sender: MsgSender) -> Result<()> {
     let mut tasks = Vec::new();
-    for mut handler in handles_v.iter() {
-        let mut handler = (*handler).clone();
+    for mut server in servers.iter() {
         tasks.push(tokio::task::spawn(async move {
             read_active_connections(handler)
         }));
@@ -38,9 +30,10 @@ async fn refresh_all_connections(handles: ServerHandles) -> Result<()> {
 }
 
 fn read_active_connections(server_handle: RemoteServer) -> Result<String> {
-    server_handle.update_info()?;
+    let server_handle = RemoteServer
+    let server_info_v = server_handle.get_updated_info()?;
     let mut connection_info = String::new();
-    server_handle
+    server_info_v
         .iter()
         .filter(|&s| s.state == RemoteDesktopSessionState::Active)
         .for_each(|i| {
