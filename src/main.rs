@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::{App, Arg};
-use log::info;
+use log::{error, info};
 use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
 use std::{
@@ -59,9 +59,12 @@ async fn main() -> ! {
         );
     }
     loop {
-        refresh_all_connections(msg_sender.clone(), input.servers.clone(), state_map.clone())
+        match refresh_all_connections(msg_sender.clone(), input.servers.clone(), state_map.clone())
             .await
-            .unwrap();
+        {
+            Ok(_) => {}
+            Err(e) => error!("{:?}", e),
+        }
         sleep(input.period).await;
     }
 }
