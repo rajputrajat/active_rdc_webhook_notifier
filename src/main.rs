@@ -109,8 +109,8 @@ fn process_cmd_args() -> Result<UserInput> {
             Arg::with_name("webhook url")
                 .long("url")
                 .value_name("webhook url")
-                .last(true)
-                .required(true),
+                .required(true)
+                .multiple(false),
         )
         .arg(
             Arg::with_name("period")
