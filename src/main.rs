@@ -81,8 +81,10 @@ async fn refresh_all_connections(
     }
     for t in tasks {
         let connection_status = t.await??;
-        info!("messages: {}", connection_status);
-        msg_sender.post(&connection_status).await?;
+        info!("messages: {:?}", connection_status);
+        if let Some(connection_status) = connection_status {
+            msg_sender.post(&connection_status).await?;
+        }
     }
     Ok(())
 }
@@ -90,7 +92,7 @@ async fn refresh_all_connections(
 fn read_active_connections(
     mut server_handle: RemoteServer,
     state_map: ServerClientMapShared,
-) -> Result<String> {
+) -> Result<Option<String>> {
     let server_info_v = server_handle.get_updated_info()?;
     let mut connection_info = String::new();
     server_info_v.iter().for_each(|i| {
@@ -100,7 +102,11 @@ fn read_active_connections(
             connection_info.push_str(&format!("{} '{}'\n", out_string, &server_handle.name));
         }
     });
-    Ok(connection_info)
+    Ok(if connection_info.is_empty() {
+        None
+    } else {
+        Some(connection_info)
+    })
 }
 
 fn process_cmd_args() -> Result<UserInput> {
