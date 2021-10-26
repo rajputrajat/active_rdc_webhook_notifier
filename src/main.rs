@@ -96,8 +96,8 @@ fn read_active_connections(
     server_info_v.iter().for_each(|i| {
         let mut locked_state = state_map.lock().unwrap();
         let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
-        if let Some(out_string) = client_state_map.update_state(&i.client_info.user, &i.state) {
-            connection_info.push_str(&format!("{} '{}'\n", out_string, &i.client_info.user));
+        if let Some(out_string) = client_state_map.update_state(&i.client_info.client, &i.state) {
+            connection_info.push_str(&format!("{} '{}'\n", out_string, &server_handle.name));
         }
     });
     Ok(connection_info)
