@@ -50,6 +50,14 @@ async fn main() -> ! {
     let input = process_cmd_args().unwrap();
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
     let state_map: ServerClientMapShared = Arc::new(Mutex::new(HashMap::new()));
+    for server in &input.servers {
+        state_map.lock().unwrap().insert(
+            server.clone(),
+            ClientStateMap {
+                data: HashMap::new(),
+            },
+        );
+    }
     loop {
         refresh_all_connections(msg_sender.clone(), input.servers.clone(), state_map.clone())
             .await
