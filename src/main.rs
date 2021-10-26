@@ -35,7 +35,9 @@ impl ClientStateMap {
                 if prev_state != &RemoteDesktopSessionState::Active {
                     return_value = Some(format!("'{}' {}", client, ACTIVATED));
                 }
-            } else if prev_state == &RemoteDesktopSessionState::Active {
+            } else if current_state != &RemoteDesktopSessionState::Active
+                && prev_state == &RemoteDesktopSessionState::Active
+            {
                 return_value = Some(format!("'{}' {}", client, DEACTIVATED));
             }
             *prev_state = *current_state;
