@@ -18,23 +18,29 @@ struct ClientStateMap {
 }
 
 impl ClientStateMap {
-    fn new() -> Self {
-        Self {
-            data: HashMap::new(),
-        }
-    }
-
     fn update_state(
         &mut self,
         client: &str,
-        current_state: RemoteDesktopSessionState,
-    ) -> Result<String> {
+        current_state: &RemoteDesktopSessionState,
+    ) -> Option<String> {
+        const ACTIVATED: &str = "is now connected to";
+        const DEACTIVATED: &str = "is disconnected from";
+        let mut return_value: Option<String> = None;
         if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
-            e.insert(current_state);
+            e.insert(*current_state);
+            return_value = Some(format!("'{}' {}", client, ACTIVATED));
         } else {
             let prev_state = self.data.get_mut(client).unwrap();
+            if current_state == &RemoteDesktopSessionState::Active {
+                if prev_state != &RemoteDesktopSessionState::Active {
+                    return_value = Some(format!("'{}' {}", client, ACTIVATED));
+                } else {
+                    return_value = Some(format!("'{}' {}", client, DEACTIVATED));
+                }
+            }
+            *prev_state = *current_state;
         }
-        Ok("".to_owned())
+        return_value
     }
 }
 
@@ -43,15 +49,11 @@ async fn main() -> ! {
     env_logger::init();
     let input = process_cmd_args().unwrap();
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
-    let client_state_map: ServerClientMap = Arc::new(ClientStateMap::new());
+    let state_map: ServerClientMapShared = Arc::new(Mutex::new(HashMap::new()));
     loop {
-        refresh_all_connections(
-            msg_sender.clone(),
-            input.servers.clone(),
-            client_state_map.clone(),
-        )
-        .await
-        .unwrap();
+        refresh_all_connections(msg_sender.clone(), input.servers.clone(), state_map.clone())
+            .await
+            .unwrap();
         sleep(input.period).await;
     }
 }
@@ -59,34 +61,37 @@ async fn main() -> ! {
 async fn refresh_all_connections(
     msg_sender: MsgSender,
     servers: Vec<String>,
-    client_state_map: ClientStateMapShared,
+    state_map: ServerClientMapShared,
 ) -> Result<()> {
     let mut tasks = Vec::new();
     for server in servers {
+        let state_map = state_map.clone();
         tasks.push(tokio::task::spawn(async move {
             let handler = RemoteServer::new(server)?;
-            read_active_connections(handler)
+            read_active_connections(handler, state_map)
         }));
     }
     for t in tasks {
         let connection_status = t.await??;
+        info!("messages: {}", connection_status);
         msg_sender.post(&connection_status).await?;
     }
     Ok(())
 }
 
-fn read_active_connections(mut server_handle: RemoteServer) -> Result<String> {
+fn read_active_connections(
+    mut server_handle: RemoteServer,
+    state_map: ServerClientMapShared,
+) -> Result<String> {
     let server_info_v = server_handle.get_updated_info()?;
     let mut connection_info = String::new();
-    server_info_v
-        .iter()
-        .filter(|&s| s.state == RemoteDesktopSessionState::Active)
-        .for_each(|i| {
-            connection_info.push_str(&format!(
-                "Connected user: {:?}, Client: {:?}, from address: {:?}",
-                i.client_info.user, i.client_info.client, i.client_info.address
-            ));
-        });
+    server_info_v.iter().for_each(|i| {
+        let mut locked_state = state_map.lock().unwrap();
+        let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
+        if let Some(out_string) = client_state_map.update_state(&i.client_info.user, &i.state) {
+            connection_info.push_str(&format!("{} '{}'\n", out_string, &i.client_info.user));
+        }
+    });
     Ok(connection_info)
 }
 

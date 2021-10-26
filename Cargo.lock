@@ -1371,9 +1371,9 @@ checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
 
 [[package]]
 name = "ppv-lite86"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3ca011bd0129ff4ae15cd04c4eef202cadf6c51c21e47aba319b4e0501db741"
+checksum = "ed0cfbc8191465bed66e1718596ee0b0b35d5ee1f41c5df2189d0fe8bde535ba"
 
 [[package]]
 name = "proc-macro-hack"
@@ -1494,9 +1494,9 @@ dependencies = [
 
 [[package]]
 name = "rdc_connections"
-version = "0.0.5"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42fc9b6f445b28c795b4821e956db43d652da9283f5544562491846767ed4808"
+checksum = "85c9c03721f04ae0f47a840e13cb970dff20bf4ec60f481ea144014a77a477f4"
 dependencies = [
  "anyhow",
  "log",
