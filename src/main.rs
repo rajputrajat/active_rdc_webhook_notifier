@@ -108,15 +108,25 @@ async fn refresh_all_connections(
     for server in servers {
         let state_map = state_map.clone();
         tasks.push(tokio::task::spawn(async move {
-            let handler = RemoteServer::new(server)?;
-            read_active_connections(handler, state_map)
+            match RemoteServer::new(server) {
+                Ok(handler) => read_active_connections(handler, state_map),
+                Err(e) => {
+                    error!("{:?}", e);
+                    Vec::new()
+                }
+            }
         }));
     }
     for t in tasks {
-        let connection_status = t.await??;
-        info!("messages: {:?}", connection_status);
-        for st in &connection_status {
-            msg_sender.post(st).await?;
+        //let connection_status = t.await??;
+        match t.await {
+            Ok(connection_status) => {
+                info!("messages: {:?}", connection_status);
+                for st in &connection_status {
+                    msg_sender.post(st).await?;
+                }
+            }
+            Err(e) => error!("{:?}", e),
         }
     }
     Ok(())
@@ -125,17 +135,21 @@ async fn refresh_all_connections(
 fn read_active_connections(
     mut server_handle: RemoteServer,
     state_map: ServerClientMapShared,
-) -> Result<Vec<String>> {
-    let server_info_v = server_handle.get_updated_info()?;
-    info!("{:?}", server_info_v);
+) -> Vec<String> {
     let mut connection_info = Vec::new();
-    let mut locked_state = state_map.lock().unwrap();
-    let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
-    let conn_status_vec = client_state_map.update_state(&server_info_v);
-    conn_status_vec.iter().for_each(|out_string| {
-        connection_info.push(format!("{} '{}'", out_string, &server_handle.name));
-    });
-    Ok(connection_info)
+    match server_handle.get_updated_info() {
+        Ok(server_info_v) => {
+            info!("{:?}", server_info_v);
+            let mut locked_state = state_map.lock().unwrap();
+            let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
+            let conn_status_vec = client_state_map.update_state(&server_info_v);
+            conn_status_vec.iter().for_each(|out_string| {
+                connection_info.push(format!("{} '{}'", out_string, &server_handle.name));
+            });
+        }
+        Err(e) => error!("{:?}", e),
+    }
+    connection_info
 }
 
 fn process_cmd_args() -> Result<UserInput> {
