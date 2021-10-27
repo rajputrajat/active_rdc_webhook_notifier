@@ -41,7 +41,7 @@ impl ClientStateMap {
             let user = &i.client_info.user;
             let client = client_name_formatter(client_name, user);
             let current_state = &i.state;
-            if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
+            if let Entry::Vacant(e) = self.data.entry(client_name.to_owned()) {
                 e.insert(ClientData {
                     state: *current_state,
                     user: user.to_owned(),
