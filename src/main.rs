@@ -28,7 +28,9 @@ impl ClientStateMap {
         let mut return_value: Option<String> = None;
         if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
             e.insert(*current_state);
-            return_value = Some(format!("'{}' {}", client, ACTIVATED));
+            if current_state == &RemoteDesktopSessionState::Active {
+                return_value = Some(format!("'{}' {}", client, ACTIVATED));
+            }
         } else {
             let prev_state = self.data.get_mut(client).unwrap();
             if current_state == &RemoteDesktopSessionState::Active {
