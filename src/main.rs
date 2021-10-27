@@ -15,7 +15,13 @@ type ServerClientMap = HashMap<String, ClientStateMap>;
 
 #[derive(Debug)]
 struct ClientStateMap {
-    data: HashMap<String, RemoteDesktopSessionState>,
+    data: HashMap<String, ClientData>,
+}
+
+#[derive(Debug)]
+struct ClientData {
+    state: RemoteDesktopSessionState,
+    user: String,
 }
 
 impl ClientStateMap {
@@ -23,36 +29,52 @@ impl ClientStateMap {
         const ACTIVATED: &str = "is now connected to";
         const DEACTIVATED: &str = "is disconnected from";
         let mut return_value: Vec<String> = Vec::new();
+        let client_name_formatter = |c: &str, u: &str| {
+            if u.is_empty() {
+                c.to_owned()
+            } else {
+                format!("{}/{}", c, u)
+            }
+        };
         client_info.iter().for_each(|i| {
-            let client = &i.client_info.client;
+            let client_name = &i.client_info.client;
+            let user = &i.client_info.user;
+            let client = client_name_formatter(client_name, user);
             let current_state = &i.state;
             if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
-                e.insert(*current_state);
+                e.insert(ClientData {
+                    state: *current_state,
+                    user: user.to_owned(),
+                });
                 if current_state == &RemoteDesktopSessionState::Active {
                     return_value.push(format!("'{}' {}", client, ACTIVATED));
                 }
             } else {
-                let prev_state = self.data.get_mut(client).unwrap();
+                let prev_state = self.data.get_mut(client_name).unwrap();
                 if current_state == &RemoteDesktopSessionState::Active {
-                    if prev_state != &RemoteDesktopSessionState::Active {
+                    if prev_state.state != RemoteDesktopSessionState::Active {
                         return_value.push(format!("'{}' {}", client, ACTIVATED));
                     }
                 } else if current_state != &RemoteDesktopSessionState::Active
-                    && prev_state == &RemoteDesktopSessionState::Active
+                    && prev_state.state == RemoteDesktopSessionState::Active
                 {
                     return_value.push(format!("'{}' {}", client, DEACTIVATED));
                 }
-                *prev_state = *current_state;
+                *prev_state = ClientData {
+                    state: *current_state,
+                    user: user.to_owned(),
+                };
             }
         });
         // in case client is not found
         for client in &mut self.data {
             if !client_info
                 .iter()
-                .any(|i| &i.client_info.client == client.0) && (client.1 == &RemoteDesktopSessionState::Active)
+                .any(|i| &i.client_info.client == client.0)
+                && (client.1.state == RemoteDesktopSessionState::Active)
             {
-                    *client.1 = RemoteDesktopSessionState::Disconnected;
-                    return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
+                client.1.state = RemoteDesktopSessionState::Disconnected;
+                return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
             }
         }
         return_value
