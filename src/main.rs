@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use clap::{App, Arg};
 use log::{error, info};
-use rdc_connections::{RemoteDesktopSessionState, RemoteServer};
+use rdc_connections::{RemoteDesktopSessionInfo, RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -13,37 +13,38 @@ type MsgSender = Arc<WebhookSender>;
 type ServerClientMapShared = Arc<Mutex<ServerClientMap>>;
 type ServerClientMap = HashMap<String, ClientStateMap>;
 
+#[derive(Debug)]
 struct ClientStateMap {
     data: HashMap<String, RemoteDesktopSessionState>,
 }
 
 impl ClientStateMap {
-    fn update_state(
-        &mut self,
-        client: &str,
-        current_state: &RemoteDesktopSessionState,
-    ) -> Option<String> {
+    fn update_state(&mut self, client_info: &Vec<RemoteDesktopSessionInfo>) -> Vec<String> {
         const ACTIVATED: &str = "is now connected to";
         const DEACTIVATED: &str = "is disconnected from";
-        let mut return_value: Option<String> = None;
-        if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
-            e.insert(*current_state);
-            if current_state == &RemoteDesktopSessionState::Active {
-                return_value = Some(format!("'{}' {}", client, ACTIVATED));
-            }
-        } else {
-            let prev_state = self.data.get_mut(client).unwrap();
-            if current_state == &RemoteDesktopSessionState::Active {
-                if prev_state != &RemoteDesktopSessionState::Active {
-                    return_value = Some(format!("'{}' {}", client, ACTIVATED));
+        let mut return_value: Vec<String> = Vec::new();
+        client_info.iter().for_each(|i| {
+            let client = &i.client_info.client;
+            let current_state = &i.state;
+            if let Entry::Vacant(e) = self.data.entry(client.to_owned()) {
+                e.insert(*current_state);
+                if current_state == &RemoteDesktopSessionState::Active {
+                    return_value.push(format!("'{}' {}", client, ACTIVATED));
                 }
-            } else if current_state != &RemoteDesktopSessionState::Active
-                && prev_state == &RemoteDesktopSessionState::Active
-            {
-                return_value = Some(format!("'{}' {}", client, DEACTIVATED));
+            } else {
+                let prev_state = self.data.get_mut(client).unwrap();
+                if current_state == &RemoteDesktopSessionState::Active {
+                    if prev_state != &RemoteDesktopSessionState::Active {
+                        return_value.push(format!("'{}' {}", client, ACTIVATED));
+                    }
+                } else if current_state != &RemoteDesktopSessionState::Active
+                    && prev_state == &RemoteDesktopSessionState::Active
+                {
+                    return_value.push(format!("'{}' {}", client, DEACTIVATED));
+                }
+                *prev_state = *current_state;
             }
-            *prev_state = *current_state;
-        }
+        });
         return_value
     }
 }
@@ -69,6 +70,7 @@ async fn main() -> ! {
             Ok(_) => {}
             Err(e) => error!("{:?}", e),
         }
+        info!("{:?}", state_map);
         sleep(input.period).await;
     }
 }
@@ -102,12 +104,11 @@ fn read_active_connections(
 ) -> Result<Option<String>> {
     let server_info_v = server_handle.get_updated_info()?;
     let mut connection_info = String::new();
-    server_info_v.iter().for_each(|i| {
-        let mut locked_state = state_map.lock().unwrap();
-        let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
-        if let Some(out_string) = client_state_map.update_state(&i.client_info.client, &i.state) {
-            connection_info.push_str(&format!("{} '{}'\n", out_string, &server_handle.name));
-        }
+    let mut locked_state = state_map.lock().unwrap();
+    let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
+    let conn_status_vec = client_state_map.update_state(&server_info_v);
+    conn_status_vec.iter().for_each(|out_string| {
+        connection_info.push_str(&format!("{} '{}'\n", out_string, &server_handle.name));
     });
     Ok(if connection_info.is_empty() {
         None
