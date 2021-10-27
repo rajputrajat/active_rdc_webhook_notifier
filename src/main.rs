@@ -47,18 +47,18 @@ impl ClientStateMap {
                     user: user.to_owned(),
                 });
                 if current_state == &RemoteDesktopSessionState::Active {
-                    return_value.push(format!("'{}' {}", client, ACTIVATED));
+                    return_value.push(format!("'{}' {}\n", client, ACTIVATED));
                 }
             } else {
                 let prev_state = self.data.get_mut(client_name).unwrap();
                 if current_state == &RemoteDesktopSessionState::Active {
                     if prev_state.state != RemoteDesktopSessionState::Active {
-                        return_value.push(format!("'{}' {}", client, ACTIVATED));
+                        return_value.push(format!("'{}' {}\n", client, ACTIVATED));
                     }
                 } else if current_state != &RemoteDesktopSessionState::Active
                     && prev_state.state == RemoteDesktopSessionState::Active
                 {
-                    return_value.push(format!("'{}' {}", client, DEACTIVATED));
+                    return_value.push(format!("'{}' {}\n", client, DEACTIVATED));
                 }
                 *prev_state = ClientData {
                     state: *current_state,
@@ -74,7 +74,7 @@ impl ClientStateMap {
                 && (client.1.state == RemoteDesktopSessionState::Active)
             {
                 client.1.state = RemoteDesktopSessionState::Disconnected;
-                return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
+                return_value.push(format!("'{}' {}\n", client.0, DEACTIVATED));
             }
         }
         return_value
