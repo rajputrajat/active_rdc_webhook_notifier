@@ -19,7 +19,7 @@ struct ClientStateMap {
 }
 
 impl ClientStateMap {
-    fn update_state(&mut self, client_info: &Vec<RemoteDesktopSessionInfo>) -> Vec<String> {
+    fn update_state(&mut self, client_info: &[RemoteDesktopSessionInfo]) -> Vec<String> {
         const ACTIVATED: &str = "is now connected to";
         const DEACTIVATED: &str = "is disconnected from";
         let mut return_value: Vec<String> = Vec::new();
@@ -45,6 +45,15 @@ impl ClientStateMap {
                 *prev_state = *current_state;
             }
         });
+        for client in &mut self.data {
+            if !client_info.iter().any(|i| {
+                (&i.client_info.client == client.0)
+                    && (client.1 == &RemoteDesktopSessionState::Active)
+            }) {
+                *client.1 = RemoteDesktopSessionState::Disconnected;
+                return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
+            }
+        }
         return_value
     }
 }
@@ -103,6 +112,7 @@ fn read_active_connections(
     state_map: ServerClientMapShared,
 ) -> Result<Option<String>> {
     let server_info_v = server_handle.get_updated_info()?;
+    info!("{:?}", server_info_v);
     let mut connection_info = String::new();
     let mut locked_state = state_map.lock().unwrap();
     let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
