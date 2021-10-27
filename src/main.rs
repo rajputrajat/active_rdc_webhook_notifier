@@ -45,13 +45,14 @@ impl ClientStateMap {
                 *prev_state = *current_state;
             }
         });
+        // in case client is not found
         for client in &mut self.data {
-            if !client_info.iter().any(|i| {
-                (&i.client_info.client == client.0)
-                    && (client.1 == &RemoteDesktopSessionState::Active)
-            }) {
-                *client.1 = RemoteDesktopSessionState::Disconnected;
-                return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
+            if !client_info
+                .iter()
+                .any(|i| &i.client_info.client == client.0) && (client.1 == &RemoteDesktopSessionState::Active)
+            {
+                    *client.1 = RemoteDesktopSessionState::Disconnected;
+                    return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
             }
         }
         return_value
