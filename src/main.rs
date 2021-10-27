@@ -47,18 +47,18 @@ impl ClientStateMap {
                     user: user.to_owned(),
                 });
                 if current_state == &RemoteDesktopSessionState::Active {
-                    return_value.push(format!("'{}' {}\n", client, ACTIVATED));
+                    return_value.push(format!("'{}' {}", client, ACTIVATED));
                 }
             } else {
                 let prev_state = self.data.get_mut(client_name).unwrap();
                 if current_state == &RemoteDesktopSessionState::Active {
                     if prev_state.state != RemoteDesktopSessionState::Active {
-                        return_value.push(format!("'{}' {}\n", client, ACTIVATED));
+                        return_value.push(format!("'{}' {}", client, ACTIVATED));
                     }
                 } else if current_state != &RemoteDesktopSessionState::Active
                     && prev_state.state == RemoteDesktopSessionState::Active
                 {
-                    return_value.push(format!("'{}' {}\n", client, DEACTIVATED));
+                    return_value.push(format!("'{}' {}", client, DEACTIVATED));
                 }
                 *prev_state = ClientData {
                     state: *current_state,
@@ -74,7 +74,7 @@ impl ClientStateMap {
                 && (client.1.state == RemoteDesktopSessionState::Active)
             {
                 client.1.state = RemoteDesktopSessionState::Disconnected;
-                return_value.push(format!("'{}' {}\n", client.0, DEACTIVATED));
+                return_value.push(format!("'{}' {}", client.0, DEACTIVATED));
             }
         }
         return_value
@@ -123,8 +123,8 @@ async fn refresh_all_connections(
     for t in tasks {
         let connection_status = t.await??;
         info!("messages: {:?}", connection_status);
-        if let Some(connection_status) = connection_status {
-            msg_sender.post(&connection_status).await?;
+        for st in &connection_status {
+            msg_sender.post(st).await?;
         }
     }
     Ok(())
@@ -133,21 +133,17 @@ async fn refresh_all_connections(
 fn read_active_connections(
     mut server_handle: RemoteServer,
     state_map: ServerClientMapShared,
-) -> Result<Option<String>> {
+) -> Result<Vec<String>> {
     let server_info_v = server_handle.get_updated_info()?;
     info!("{:?}", server_info_v);
-    let mut connection_info = String::new();
+    let mut connection_info = Vec::new();
     let mut locked_state = state_map.lock().unwrap();
     let client_state_map = locked_state.get_mut(&server_handle.name).unwrap(); // unwrap is fine here
     let conn_status_vec = client_state_map.update_state(&server_info_v);
     conn_status_vec.iter().for_each(|out_string| {
-        connection_info.push_str(&format!("{} '{}'\n", out_string, &server_handle.name));
+        connection_info.push(format!("{} '{}'", out_string, &server_handle.name));
     });
-    Ok(if connection_info.is_empty() {
-        None
-    } else {
-        Some(connection_info)
-    })
+    Ok(connection_info)
 }
 
 fn process_cmd_args() -> Result<UserInput> {
