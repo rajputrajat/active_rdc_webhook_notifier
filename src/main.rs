@@ -1,10 +1,13 @@
 use anyhow::{anyhow, Result};
+use chrono::Local;
 use clap::{App, Arg};
+use env_logger::Builder;
 use log::{error, info};
 use rdc_connections::{RemoteDesktopSessionInfo, RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
 use std::{
     collections::{hash_map::Entry, HashMap},
+    io::Write,
     sync::{Arc, Mutex},
 };
 use tokio::time::{sleep, Duration};
@@ -75,7 +78,7 @@ impl ClientStateMap {
 
 #[tokio::main]
 async fn main() -> ! {
-    env_logger::init();
+    initilize_logger();
     let input = process_cmd_args().unwrap();
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
     let state_map: ServerClientMapShared = Arc::new(Mutex::new(HashMap::new()));
@@ -97,6 +100,20 @@ async fn main() -> ! {
         info!("{:?}", state_map);
         sleep(input.period).await;
     }
+}
+
+fn initilize_logger() {
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .init();
 }
 
 async fn refresh_all_connections(
