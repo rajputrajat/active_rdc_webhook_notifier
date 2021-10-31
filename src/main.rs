@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-//use chrono::Local;
 use clap::{App, Arg};
 use log::{error, info};
 use rdc_connections::{RemoteDesktopSessionInfo, RemoteDesktopSessionState, RemoteServer};
