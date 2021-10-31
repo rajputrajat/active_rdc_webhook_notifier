@@ -117,7 +117,8 @@ fn get_logger() -> Result<Logger> {
                 OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(log_file)?
+                    .open(log_file)
+                    .map_err(|e| anyhow!("log file could not be opened or created. {:?}", e))?
             };
             slog_term::FullFormat::new(slog_term::PlainDecorator::new(log_file_handle)).build()
         };
