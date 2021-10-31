@@ -1,13 +1,16 @@
 use anyhow::{anyhow, Result};
-use chrono::Local;
+//use chrono::Local;
 use clap::{App, Arg};
-use env_logger::Builder;
 use log::{error, info};
 use rdc_connections::{RemoteDesktopSessionInfo, RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
+use slog::{o, Drain, Logger};
+use slog_async::Async as LogAsync;
 use std::{
     collections::{hash_map::Entry, HashMap},
-    io::Write,
+    env,
+    fs::OpenOptions,
+    path::Path,
     sync::{Arc, Mutex},
 };
 use tokio::time::{sleep, Duration};
@@ -78,7 +81,8 @@ impl ClientStateMap {
 
 #[tokio::main]
 async fn main() -> ! {
-    initilize_logger();
+    let _scope_guard = slog_scope::set_global_logger(get_logger().unwrap());
+    let _log_guard = slog_stdlog::init().unwrap();
     let input = process_cmd_args().unwrap();
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
     let state_map: ServerClientMapShared = Arc::new(Mutex::new(HashMap::new()));
@@ -102,18 +106,40 @@ async fn main() -> ! {
     }
 }
 
-fn initilize_logger() {
-    Builder::from_env("RUST_LOG")
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] - {}",
-                Local::now().format("%Y%m%d %H:%M:%S.%3f"),
-                record.level(),
-                record.args()
-            )
-        })
-        .init();
+fn get_logger() -> Result<Logger> {
+    let logger = {
+        let term_drain =
+            slog_term::FullFormat::new(slog_term::TermDecorator::new().build()).build();
+        let file_drain = {
+            let log_file_handle = {
+                let log_file =
+                    Path::new(&env::var("USERPROFILE")?).join("/.active_rdc_webhook_notifier_log");
+                OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(log_file)?
+            };
+            slog_term::FullFormat::new(slog_term::PlainDecorator::new(log_file_handle)).build()
+        };
+        let drain = LogAsync::new(slog::Duplicate::new(term_drain, file_drain).fuse())
+            .build()
+            .fuse();
+        slog::Logger::root(drain, o!())
+    };
+
+    Ok(logger)
+
+    // Builder::from_env("RUST_LOG")
+    //     .format(|buf, record| {
+    //         writeln!(
+    //             buf,
+    //             "{} [{}] - {}",
+    //             Local::now().format("%Y%m%d %H:%M:%S.%3f"),
+    //             record.level(),
+    //             record.args()
+    //         )
+    //     })
+    //     .init();
 }
 
 async fn refresh_all_connections(
