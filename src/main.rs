@@ -82,6 +82,7 @@ async fn main() -> ! {
     let _scope_guard = slog_scope::set_global_logger(get_logger().unwrap());
     let _log_guard = slog_stdlog::init().unwrap();
     let input = process_cmd_args().unwrap();
+    info!("{:?}", input);
     let msg_sender = Arc::new(WebhookSender::new(&input.url));
     let state_map: ServerClientMapShared = Arc::new(Mutex::new(HashMap::new()));
     for server in &input.servers {
@@ -252,6 +253,7 @@ fn process_cmd_args() -> Result<UserInput> {
     })
 }
 
+#[derive(Debug)]
 struct UserInput {
     servers: Vec<String>,
     url: String,
