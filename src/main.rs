@@ -4,7 +4,7 @@ use clap::{App, Arg};
 use log::{error, info};
 use rdc_connections::{RemoteDesktopSessionInfo, RemoteDesktopSessionState, RemoteServer};
 use simple_webhook_msg_sender::WebhookSender;
-use slog::{o, Drain, Logger};
+use slog::{o, Drain, Filter, Logger};
 use slog_async::Async as LogAsync;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -78,7 +78,6 @@ impl ClientStateMap {
         return_value
     }
 }
-
 #[tokio::main]
 async fn main() -> ! {
     let _scope_guard = slog_scope::set_global_logger(get_logger().unwrap());
@@ -108,13 +107,18 @@ async fn main() -> ! {
 
 fn get_logger() -> Result<Logger> {
     let logger = {
-        let term_drain =
-            slog_term::FullFormat::new(slog_term::TermDecorator::new().build()).build();
+        let filtered_term_drain = {
+            let term_drain =
+                slog_term::FullFormat::new(slog_term::TermDecorator::new().build()).build();
+            Filter::new(term_drain, |rec| {
+                rec.level().is_at_least(slog::Level::Warning)
+            })
+        };
         let file_drain = {
             let log_file_handle = {
-                let log_file = Path::new(&env::var("LOCALAPPDATA")?)
-                    .join("active_rdc_webhook_notifier")
-                    .join("log.txt");
+                let log_file =
+                    Path::new(&env::var("LOCALAPPDATA")?).join("active_rdc_webhook_notifier.log");
+                println!("detailed log file path: {:?}", log_file);
                 OpenOptions::new()
                     .create(true)
                     .append(true)
@@ -123,7 +127,7 @@ fn get_logger() -> Result<Logger> {
             };
             slog_term::FullFormat::new(slog_term::PlainDecorator::new(log_file_handle)).build()
         };
-        let drain = LogAsync::new(slog::Duplicate::new(term_drain, file_drain).fuse())
+        let drain = LogAsync::new(slog::Duplicate::new(filtered_term_drain, file_drain).fuse())
             .build()
             .fuse();
         slog::Logger::root(drain, o!())
