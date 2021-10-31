@@ -136,20 +136,7 @@ fn get_logger() -> Result<Logger> {
                 .fuse();
         slog::Logger::root(drain, o!())
     };
-
     Ok(logger)
-
-    // Builder::from_env("RUST_LOG")
-    //     .format(|buf, record| {
-    //         writeln!(
-    //             buf,
-    //             "{} [{}] - {}",
-    //             Local::now().format("%Y%m%d %H:%M:%S.%3f"),
-    //             record.level(),
-    //             record.args()
-    //         )
-    //     })
-    //     .init();
 }
 
 async fn refresh_all_connections(
