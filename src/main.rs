@@ -112,8 +112,9 @@ fn get_logger() -> Result<Logger> {
             slog_term::FullFormat::new(slog_term::TermDecorator::new().build()).build();
         let file_drain = {
             let log_file_handle = {
-                let log_file =
-                    Path::new(&env::var("USERPROFILE")?).join("/.active_rdc_webhook_notifier_log");
+                let log_file = Path::new(&env::var("LOCALAPPDATA")?)
+                    .join("active_rdc_webhook_notifier")
+                    .join("log.txt");
                 OpenOptions::new()
                     .create(true)
                     .append(true)
