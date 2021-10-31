@@ -114,22 +114,26 @@ fn get_logger() -> Result<Logger> {
                 rec.level().is_at_least(slog::Level::Warning)
             })
         };
-        let file_drain = {
-            let log_file_handle = {
-                let log_file =
-                    Path::new(&env::var("LOCALAPPDATA")?).join("active_rdc_webhook_notifier.log");
-                println!("detailed log file path: {:?}", log_file);
-                OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(log_file)
-                    .map_err(|e| anyhow!("log file could not be opened or created. {:?}", e))?
+        let filtered_file_drain = {
+            let file_drain = {
+                let log_file_handle = {
+                    let log_file = Path::new(&env::var("LOCALAPPDATA")?)
+                        .join("active_rdc_webhook_notifier.log");
+                    println!("detailed log file path: {:?}", log_file);
+                    OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(log_file)
+                        .map_err(|e| anyhow!("log file could not be opened or created. {:?}", e))?
+                };
+                slog_term::FullFormat::new(slog_term::PlainDecorator::new(log_file_handle)).build()
             };
-            slog_term::FullFormat::new(slog_term::PlainDecorator::new(log_file_handle)).build()
+            Filter::new(file_drain, |rec| rec.level().is_at_least(slog::Level::Info))
         };
-        let drain = LogAsync::new(slog::Duplicate::new(filtered_term_drain, file_drain).fuse())
-            .build()
-            .fuse();
+        let drain =
+            LogAsync::new(slog::Duplicate::new(filtered_term_drain, filtered_file_drain).fuse())
+                .build()
+                .fuse();
         slog::Logger::root(drain, o!())
     };
 
