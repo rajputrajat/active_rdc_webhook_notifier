@@ -103,12 +103,12 @@ async fn main() -> ! {
 }
 
 fn initilize_logger() {
-    Builder::new()
+    Builder::from_env("RUST_LOG")
         .format(|buf, record| {
             writeln!(
                 buf,
                 "{} [{}] - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                Local::now().format("%Y%m%d %H:%M:%S.%3f"),
                 record.level(),
                 record.args()
             )
